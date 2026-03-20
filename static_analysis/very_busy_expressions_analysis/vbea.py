@@ -8,20 +8,21 @@ from static_analysis.syntax.ast import (
     BinOp,
     BoolExpr,
     If,
-    Skip,
     Seq,
+    Skip,
     Stmt,
     While,
 )
 from static_analysis.analyzer import Analyzer
 
-class AvailableExpressionsAnalyzer(Analyzer[BinOp]):
-    """
-    Available Expressions Analysis (forward, must)
 
-    - E: 프로그램 내 등장하는 후보 '산술 표현식'(BinOp 노드들)
-    - IN[n]  : n에 도달하기 직전에 모든 경로에서 available인 표현식 집합
-    - OUT[n] : n의 전이(gen/kill)를 반영한 결과
+class VeryBusyExpressionsAnalyzer(Analyzer[BinOp]):
+    """
+    Very Busy Expressions Analysis (backward, must)
+
+    - E: 프로그램 내 등장하는 후보 산술 표현식(BinOp) 집합
+    - OUT[n]: n 직후 시점에서, 모든 경로에서 곧 재계산되기 전에 필요한 표현식 집합
+    - IN[n]: n 직전 시점의 very busy 표현식 집합
     """
 
     def __init__(self, program: Stmt) -> None:
@@ -105,41 +106,33 @@ class AvailableExpressionsAnalyzer(Analyzer[BinOp]):
 
     def analyze(self) -> Dict[str, object]:
         nodes = sorted(self.cfg_builder.nodes.keys())
+        succ = self.cfg_builder.succ
 
-        # preds 계산 (forward analysis이기 때문에 preds 기반으로 계산)
-        preds: Dict[int, Set[int]] = {nid: set() for nid in nodes}
-        for u, vs in self.cfg_builder.succ.items():
-            for v in vs:
-                preds[v].add(u)
-
-        # 초기값
         IN: Dict[int, Set[BinOp]] = {}
         OUT: Dict[int, Set[BinOp]] = {}
 
         for nid in nodes:
-            if not preds[nid]:
-                IN[nid] = set()
+            if not succ[nid]:
+                OUT[nid] = set()
             else:
-                IN[nid] = set(self.E)
+                OUT[nid] = set(self.E)
+            IN[nid] = self.GEN[nid] | (OUT[nid] - self.KILL[nid])
 
-            OUT[nid] = self.GEN[nid] | (IN[nid] - self.KILL[nid])
-
-        # fixpoint
         changed = True
         while changed:
             changed = False
             for nid in nodes:
-                # meet: intersection over OUT[p]
-                if not preds[nid]:
-                    newIN = set()
+                if not succ[nid]:
+                    newOUT = set()
                 else:
-                    it = iter(preds[nid])
+                    it = iter(succ[nid])
                     first = next(it)
-                    newIN = set(OUT[first])
-                    for p in it:
-                        newIN &= OUT[p]
+                    newOUT = set(IN[first])
+                    for s in it:
+                        newOUT &= IN[s]
 
-                newOUT = self.GEN[nid] | (newIN - self.KILL[nid])
+                newIN = self.GEN[nid] | (newOUT - self.KILL[nid])
+
                 if newIN != IN[nid] or newOUT != OUT[nid]:
                     IN[nid] = newIN
                     OUT[nid] = newOUT

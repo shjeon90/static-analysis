@@ -1,6 +1,7 @@
 import argparse
 from static_analysis.available_expressions_analysis import AvailableExpressionsAnalyzer
 from static_analysis.reaching_definition_analysis import ReachingDefinitionsAnalyzer
+from static_analysis.very_busy_expressions_analysis import VeryBusyExpressionsAnalyzer
 from static_analysis.syntax.parser import WhileParser
 
 PROGRAM_SRC = """
@@ -13,7 +14,7 @@ while x < 5 do
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--analysis", type=str, required=True, choices=["aea", "rda"])
+    parser.add_argument("--analysis", type=str, required=True, choices=["aea", "rda", "vbea"])
     return parser.parse_args()
 
 def main():
@@ -24,6 +25,8 @@ def main():
         analyzer = AvailableExpressionsAnalyzer(ast)
     elif args.analysis == "rda":
         analyzer = ReachingDefinitionsAnalyzer(ast)
+    elif args.analysis == "vbea":
+        analyzer = VeryBusyExpressionsAnalyzer(ast)
     result = analyzer.analyze()
     analyzer.print_result(result)
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Set
 
+from static_analysis.analyzer import Analyzer
 from static_analysis.syntax.ast import Stmt
-from static_analysis.cfg import CFGBuilder
 
 
 @dataclass(frozen=True)
@@ -16,7 +16,7 @@ class Definition:
         return f"{self.var}@{self.node_id}"
 
 
-class ReachingDefinitionsAnalyzer:
+class ReachingDefinitionsAnalyzer(Analyzer[Definition]):
     """
     Reaching Definitions Analysis (forward, may)
 
@@ -27,18 +27,13 @@ class ReachingDefinitionsAnalyzer:
     """
 
     def __init__(self, program: Stmt) -> None:
-        self.program = program
-        self.cfg_builder = CFGBuilder()
-        self.entry, self.exit = self.cfg_builder.build(program)
-
         self.D: Set[Definition] = set()
         self.var_to_defs: Dict[str, Set[Definition]] = {}
+        super().__init__(program)
 
-        self.GEN: Dict[int, Set[Definition]] = {}
-        self.KILL: Dict[int, Set[Definition]] = {}
-
-        self._collect_universe()
-        self._compute_gen_kill()
+    @property
+    def universe_name(self) -> str:
+        return "D"
 
     def _collect_universe(self) -> None:
         self.D = set()
@@ -102,18 +97,6 @@ class ReachingDefinitionsAnalyzer:
 
         return {"D": set(self.D), "IN": IN, "OUT": OUT, "entry": self.entry, "exit": self.exit}
 
-    def print_result(self, result: Dict[str, object]) -> None:
-        print("Universe D =", format_set(result["D"]))
-        print("entry =", result["entry"], "exit =", result["exit"])
-        for nid in sorted(result["IN"].keys()):
-            inn = result["IN"][nid]
-            out = result["OUT"][nid]
-            node_kind = self.cfg_builder.nodes[nid].kind
-            print(f"Node {nid} ({node_kind}): IN={format_set(inn)} OUT={format_set(out)}")
-
-
 def format_set(s: Set[Definition]) -> str:
-    if not s:
-        return "{}"
-    return "{" + ", ".join(sorted(d.to_key() for d in s)) + "}"
+    return Analyzer.format_set(s)
 
