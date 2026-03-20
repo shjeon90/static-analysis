@@ -1,6 +1,9 @@
 ## 정적 분석 연습(WHILE 언어)
 
-이 저장소는 `WHILE` 언어를 대상으로 여러 가지 **정적 분석(static analysis)** 알고리즘을 구현해보는 연습용 프로젝트입니다. 현재는 Available Expressions Analysis(`aea`)만 구현되어 있으며, 앞으로 분석을 점진적으로 추가할 예정입니다.
+이 저장소는 `WHILE` 언어를 대상으로 여러 가지 **정적 분석(static analysis)** 알고리즘을 구현해보는 연습용 프로젝트입니다. 현재는 아래 분석이 구현되어 있습니다.
+
+- Available Expressions Analysis (`aea`)
+- Reaching Definitions Analysis (`rda`)
 
 ## 지원 언어(WHILE)
 
@@ -12,7 +15,7 @@
 
 파서는 `syntax/parser.py`의 `WhileParser`를 사용합니다.
 
-## 현재 구현: Available Expressions Analysis (Must, Forward)
+## 현재 구현 1: Available Expressions Analysis (Must, Forward)
 
 `available_expressions_analysis/aea.py`에서 다음과 같은 **전방향(must) 가용 표현식 분석**을 수행합니다.
 
@@ -27,7 +30,24 @@ CFG는 `CFGBuilder`가 생성하며, 노드 종류는 대략 아래와 같습니
 - `cond`: 조건( `if`/`while` ) 노드
 - `skip`: join/after 등 보조 노드
 
-분석 결과는 각 노드의 `IN/OUT` 및 분석 유니버스 `E`, entry/exit 노드 id를 함께 출력합니다.
+분석 결과는 각 노드의 `IN/OUT` 및 분석 유니버스 `E`, entry/exit 노드 id를 함께 반환합니다.
+
+## 현재 구현 2: Reaching Definitions Analysis (May, Forward)
+
+`reaching_definition_analysis/rda.py`에서 다음과 같은 **전방향(may) 도달 정의 분석**을 수행합니다.
+
+- `D`: 프로그램 내 정의(definition)의 유니버스
+  - 정의는 `(변수명, assign CFG 노드 id)` 쌍으로 표현합니다. (예: `x@3`)
+- `IN[n]`: 노드 `n` 직전에 도달 가능한 정의 집합(경로 합집합)
+- `OUT[n]`: 노드 `n`의 전이(gen/kill) 반영 결과
+
+전이 함수는 다음 직관을 따릅니다.
+
+- `GEN[n]`: `assign` 노드인 경우 현재 노드의 새 정의 1개
+- `KILL[n]`: 같은 변수를 정의하던 기존 정의들(현재 정의 제외)
+- `OUT[n] = GEN[n] ∪ (IN[n] - KILL[n])`
+
+분석 결과는 각 노드의 `IN/OUT` 및 분석 유니버스 `D`, entry/exit 노드 id를 함께 반환합니다.
 
 ## 실행 방법
 
@@ -37,7 +57,9 @@ CFG는 `CFGBuilder`가 생성하며, 노드 종류는 대략 아래와 같습니
 python main.py
 ```
 
-현재 `main.py`에는 예제 프로그램(문자열)이 하드코딩되어 있으며, 해당 프로그램을 파싱한 뒤 `AvailableExpressionsAnalyzer`를 실행합니다.
+현재 `main.py`에는 예제 프로그램(문자열)이 하드코딩되어 있으며, 해당 프로그램을 파싱한 뒤 분석기를 실행합니다.
+
+현재 기본 예시는 `ReachingDefinitionsAnalyzer`를 실행하도록 되어 있습니다.
 
 ## 프로젝트 구조(개요)
 
@@ -45,17 +67,23 @@ python main.py
   - `ast.py`: `WHILE` 언어 AST 노드 정의
   - `parser.py`: `WhileParser` 구현
   - (토크나이저 등 세부 구현이 있을 수 있음)
+- `cfg.py`
+  - 공통 CFG 노드/엣지 구성기(`CFGBuilder`)
 - `available_expressions_analysis/`
   - `aea.py`: Available Expressions Analysis 구현
   - `__init__.py`: 외부에서 `AvailableExpressionsAnalyzer`로 import 가능
+- `reaching_definition_analysis/`
+  - `rda.py`: Reaching Definitions Analysis 구현
+  - `__init__.py`: 외부에서 `ReachingDefinitionsAnalyzer`로 import 가능
+- `__init__.py`
+  - `static_analysis` 패키지 루트
 - `main.py`
-  - 현재 분석을 데모로 실행하는 엔트리 포인트
+  - 현재 분석을 데모로 실행하는 엔트리 포인트 (기본: RDA)
 
 ## 다음에 추가할 것(로드맵)
 
 원하는 순서대로 정적 분석들을 확장할 예정입니다. 예를 들면:
 
-- Reaching Definitions(도달 정의)
 - Live Variables(생존 변수)
 - Constant Propagation / Folding(상수 전파)
 - Common Subexpression Elimination(CSE)과의 연결(가능 시)

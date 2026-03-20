@@ -1,87 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, Set
 
 from static_analysis.syntax.ast import (
     ArithExpr,
     Assign,
     BinOp,
     BoolExpr,
-    BoolConst,
-    Compare,
     If,
     Skip,
     Seq,
     Stmt,
     While,
 )
-
-
-@dataclass(frozen=True)
-class CFGNode:
-    id: int
-    kind: str  # 'skip' | 'assign' | 'cond'
-    assign: Optional[Assign] = None
-    cond: Optional[BoolExpr] = None
-
-
-class CFGBuilder:
-    def __init__(self) -> None:
-        self._next_id = 0
-        self.nodes: Dict[int, CFGNode] = {}
-        self.succ: Dict[int, List[int]] = {}
-
-    def _new_node(self, kind: str, assign: Optional[Assign] = None, cond: Optional[BoolExpr] = None) -> int:
-        nid = self._next_id
-        self._next_id += 1
-        node = CFGNode(id=nid, kind=kind, assign=assign, cond=cond)
-        self.nodes[nid] = node
-        self.succ[nid] = []
-        return nid
-
-    def _add_edge(self, u: int, v: int) -> None:
-        self.succ[u].append(v)
-
-    def build(self, stmt: Stmt) -> Tuple[int, int]: # entry, exit
-        if isinstance(stmt, Skip):
-            n = self._new_node("skip")
-            return n, n
-
-        if isinstance(stmt, Assign):
-            n = self._new_node("assign", assign=stmt)
-            return n, n
-
-        if isinstance(stmt, Seq):
-            e1, x1 = self.build(stmt.first)
-            e2, x2 = self.build(stmt.second)
-            self._add_edge(x1, e2)
-            return e1, x2
-
-        if isinstance(stmt, If):
-            cond_node = self._new_node("cond", cond=stmt.cond)
-            then_entry, then_exit = self.build(stmt.then_branch)
-            else_entry, else_exit = self.build(stmt.else_branch)
-            join = self._new_node("skip")
-
-            self._add_edge(cond_node, then_entry)
-            self._add_edge(cond_node, else_entry)
-            self._add_edge(then_exit, join)
-            self._add_edge(else_exit, join)
-            return cond_node, join
-
-        if isinstance(stmt, While):
-            cond_node = self._new_node("cond", cond=stmt.cond)
-            body_entry, body_exit = self.build(stmt.body)
-            after = self._new_node("skip")
-
-            self._add_edge(cond_node, body_entry)  # true
-            self._add_edge(cond_node, after)  # false
-            self._add_edge(body_exit, cond_node)  # back edge
-            return cond_node, after
-
-        raise TypeError(f"지원하지 않는 Stmt 타입: {type(stmt)}")
-
+from static_analysis.cfg import CFGBuilder
 
 class AvailableExpressionsAnalyzer:
     """
@@ -97,21 +29,20 @@ class AvailableExpressionsAnalyzer:
         self.cfg_builder = CFGBuilder()
         self.entry, self.exit = self.cfg_builder.build(program)
 
-        # universe E: 표현식 key -> vars 집합
-        self.expr_varset: Dict[str, Set[str]] = {} # 표현식 key -> vars 집합
-        self.E: Set[str] = set()    # 표현식 key 집합
+        # universe E: 구조적으로 고유한 BinOp 집합
+        self.expr_varset: Dict[BinOp, Set[str]] = {}
+        self.E: Set[BinOp] = set()
         self._collect_universe()
 
         # per-node GEN/KILL
-        self.GEN: Dict[int, Set[str]] = {}
-        self.KILL: Dict[int, Set[str]] = {}
+        self.GEN: Dict[int, Set[BinOp]] = {}
+        self.KILL: Dict[int, Set[BinOp]] = {}
         self._compute_gen_kill()
 
     def _add_expr_candidate(self, binop: BinOp) -> None:
-        key = binop.to_key()
-        if key not in self.expr_varset:
-            self.expr_varset[key] = set(binop.vars())
-        self.E.add(key)
+        if binop not in self.expr_varset:
+            self.expr_varset[binop] = set(binop.vars())
+        self.E.add(binop)
 
     def _collect_universe_stmt(self, stmt: Stmt) -> None:
         if isinstance(stmt, Skip):
@@ -147,11 +78,11 @@ class AvailableExpressionsAnalyzer:
         self.E = set()
         self._collect_universe_stmt(self.program)
 
-    def _candidates_in_arith(self, expr: ArithExpr) -> Set[str]:
-        return {c.to_key() for c in expr.candidates()}
+    def _candidates_in_arith(self, expr: ArithExpr) -> Set[BinOp]:
+        return set(expr.candidates())
 
-    def _candidates_in_bool(self, b: BoolExpr) -> Set[str]:
-        return {c.to_key() for c in b.candidates()}
+    def _candidates_in_bool(self, b: BoolExpr) -> Set[BinOp]:
+        return set(b.candidates())
 
     def _compute_gen_kill(self) -> None:
         for nid, node in self.cfg_builder.nodes.items():
@@ -163,7 +94,7 @@ class AvailableExpressionsAnalyzer:
             if node.kind == "assign":
                 assert node.assign is not None
                 self.GEN[nid] = self._candidates_in_arith(node.assign.expr)
-                kill: Set[str] = set()
+                kill: Set[BinOp] = set()
                 for key, varset in self.expr_varset.items():
                     if node.assign.name in varset:
                         kill.add(key)
@@ -188,8 +119,8 @@ class AvailableExpressionsAnalyzer:
                 preds[v].add(u)
 
         # 초기값
-        IN: Dict[int, Set[str]] = {}
-        OUT: Dict[int, Set[str]] = {}
+        IN: Dict[int, Set[BinOp]] = {}
+        OUT: Dict[int, Set[BinOp]] = {}
 
         for nid in nodes:
             if not preds[nid]:
@@ -223,8 +154,8 @@ class AvailableExpressionsAnalyzer:
         return {"E": set(self.E), "IN": IN, "OUT": OUT, "entry": self.entry, "exit": self.exit}
 
 
-def format_set(s: Set[str]) -> str:
+def format_set(s: Set[BinOp]) -> str:
     if not s:
         return "{}"
-    return "{" + ", ".join(sorted(s)) + "}"
+    return "{" + ", ".join(sorted(expr.to_key() for expr in s)) + "}"
 

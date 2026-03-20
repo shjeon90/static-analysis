@@ -1,5 +1,7 @@
 from static_analysis.available_expressions_analysis import AvailableExpressionsAnalyzer
 from static_analysis.available_expressions_analysis import format_set
+from static_analysis.reaching_definition_analysis import ReachingDefinitionsAnalyzer
+from static_analysis.reaching_definition_analysis import format_set
 from static_analysis.syntax.parser import WhileParser
 
 def main():
@@ -12,10 +14,11 @@ def main():
     """
 
     ast = WhileParser(program_src).parse()
-    analyzer = AvailableExpressionsAnalyzer(ast)
+    # analyzer = AvailableExpressionsAnalyzer(ast)
+    analyzer = ReachingDefinitionsAnalyzer(ast)
     result = analyzer.analyze()
 
-    print("Universe E =", format_set(result["E"]))
+    print("Universe D =", format_set(result["D"]))
     print("entry =", result["entry"], "exit =", result["exit"])
 
     for nid in sorted(result["IN"].keys()):
