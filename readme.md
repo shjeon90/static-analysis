@@ -1,79 +1,124 @@
-## 정적 분석 연습(WHILE 언어)
+## Static Analysis on the WHILE Language
 
-이 저장소는 `WHILE` 언어를 대상으로 여러 가지 **정적 분석(static analysis)** 알고리즘을 구현해보는 연습용 프로젝트입니다. 현재는 아래 분석이 구현되어 있습니다.
+This repository implements several **dataflow analysis** algorithms for the `WHILE` language, following the formal framework of:
+
+> Nielson, Nielson & Hankin, *Principles of Program Analysis*, Springer, 2nd ed.
 
 - Available Expressions Analysis (`aea`)
 - Reaching Definitions Analysis (`rda`)
 - Very Busy Expressions Analysis (`vbea`)
 
-## 지원 언어(WHILE)
+---
 
-구현된 파서는 다음 문장/표현식을 지원합니다.
+## WHILE Language
 
-- 문장: `skip`, 대입 `x := <arith>`, 시퀀스(세미콜론), 조건 `if <bool> then <stmt> else <stmt>`, 반복 `while <bool> do <stmt>`
-- 불리언: `true/false`, `not`, `and`, `or`, 비교 `(<, <=, >, >=, =, !=)` (양변은 산술식)
-- 산술식: 변수/상수, `+ - * /`, 괄호
+The supported syntax is defined in `while_grammar.md`. The grammar covers statements $S$, arithmetic expressions $a \in \mathbf{AExp}$, and boolean expressions $b \in \mathbf{BExp}$.
 
-파서는 `syntax/parser.py`의 `WhileParser`를 사용합니다.
+Each **elementary block** is a maximal syntactic unit that executes atomically and carries a unique **label** $\ell \in \mathbf{Lab}$. For a program $S_\star$:
 
-## 현재 구현 1: Available Expressions Analysis (Must, Forward)
+| Notation | Meaning |
+|---|---|
+| $\mathbf{Lab}_\star$ | set of all labels occurring in $S_\star$ |
+| $\mathbf{Var}_\star$ | set of all variables occurring in $S_\star$ |
+| $\mathit{init}(S_\star)$ | label of the first block executed |
+| $\mathit{final}(S_\star)$ | set of labels of blocks that may execute last |
+| $\mathit{flow}(S_\star)$ | set of edges $(\ell, \ell') \in \mathbf{Lab}_\star \times \mathbf{Lab}_\star$ (control flow) |
+| $\mathit{flow}^R(S_\star)$ | reverse flow: $\{(\ell', \ell) \mid (\ell, \ell') \in \mathit{flow}(S_\star)\}$ |
+| $[B]^\ell$ | the elementary block with label $\ell$ and body $B$ |
 
-`available_expressions_analysis/aea.py`에서 다음과 같은 **전방향(must) 가용 표현식 분석**을 수행합니다.
+The parser is implemented in `syntax/parser.py` as `WhileParser`.
 
-- `E`: 프로그램 전체에서 등장하는 후보 산술 표현식 집합(분석 유니버스)
-  - 후보는 AST 내부의 `BinOp`(중첩 포함)로 정의됩니다.
-- `IN[n]`: 노드 `n`에 도달하기 직전에, 모든 경로에서 가용한 표현식 집합
-- `OUT[n]`: 노드 `n`의 전이(gen/kill)를 반영한 결과
+---
 
-CFG는 `CFGBuilder`가 생성하며, 노드 종류는 대략 아래와 같습니다.
+## Analysis 1: Available Expressions Analysis (Forward, Must)
 
-- `assign`: 대입문 노드
-- `cond`: 조건( `if`/`while` ) 노드
-- `skip`: join/after 등 보조 노드
+**File:** `available_expressions_analysis/aea.py`
 
-분석 결과는 각 노드의 `IN/OUT` 및 분석 유니버스 `E`, entry/exit 노드 id를 함께 반환합니다.
+An expression $a$ is **available** at a program point if every path from $\mathit{init}(S_\star)$ to that point evaluates $a$ and does not subsequently modify any variable in $\mathit{FV}(a)$.
 
-## 현재 구현 2: Reaching Definitions Analysis (May, Forward)
+### Universe
 
-`reaching_definition_analysis/rda.py`에서 다음과 같은 **전방향(may) 도달 정의 분석**을 수행합니다.
+$$\mathbf{AExp}_\star \;=\; \{ a \in \mathbf{AExp} \mid a \text{ is a non-trivial sub-expression (BinOp) occurring in } S_\star \}$$
 
-- `D`: 프로그램 내 정의(definition)의 유니버스
-  - 정의는 `(변수명, assign CFG 노드 id)` 쌍으로 표현합니다. (예: `x@3`)
-- `IN[n]`: 노드 `n` 직전에 도달 가능한 정의 집합(경로 합집합)
-- `OUT[n]`: 노드 `n`의 전이(gen/kill) 반영 결과
+### gen and kill
 
-전이 함수는 다음 직관을 따릅니다.
+For each labeled block $[B]^\ell$:
 
-- `GEN[n]`: `assign` 노드인 경우 현재 노드의 새 정의 1개
-- `KILL[n]`: 같은 변수를 정의하던 기존 정의들(현재 정의 제외)
-- `OUT[n] = GEN[n] ∪ (IN[n] - KILL[n])`
+$$\mathit{gen}_{AE}([B]^\ell) = \begin{cases} \mathbf{AExp}(a) & \text{if } B \equiv x := a \\ \mathbf{AExp}(b) & \text{if } B \equiv b \text{ (cond)} \\ \emptyset & \text{if } B \equiv \mathbf{skip} \end{cases}$$
 
-분석 결과는 각 노드의 `IN/OUT` 및 분석 유니버스 `D`, entry/exit 노드 id를 함께 반환합니다.
+$$\mathit{kill}_{AE}([B]^\ell) = \begin{cases} \{ a' \in \mathbf{AExp}_\star \mid x \in \mathit{FV}(a') \} & \text{if } B \equiv x := a \\ \emptyset & \text{otherwise} \end{cases}$$
 
-## 현재 구현 3: Very Busy Expressions Analysis (Must, Backward)
+where $\mathbf{AExp}(e)$ denotes the set of non-trivial arithmetic sub-expressions of $e$, and $\mathit{FV}(a')$ is the set of free variables of $a'$.
 
-`very_busy_expressions_analysis/vbea.py`에서 다음과 같은 **후방향(must) very busy expressions 분석**을 수행합니다.
+### Dataflow Equations
 
-- `E`: 프로그램 전체에서 등장하는 후보 산술 표현식 집합(분석 유니버스)
-- `OUT[n]`: 노드 `n` 직후 시점에서, 모든 경로에서 "곧 재계산되기 전에 반드시 필요한" 표현식 집합
-- `IN[n]`: 노드 `n`의 전이(gen/kill)를 반영한 직전 시점 집합
+$$AE\_entry(\ell) = \begin{cases} \emptyset & \text{if } \ell = \mathit{init}(S_\star) \\ \displaystyle\bigcap_{\,(\ell',\,\ell)\,\in\,\mathit{flow}(S_\star)} AE\_exit(\ell') & \text{otherwise} \end{cases}$$
 
-전이 함수는 다음 직관을 따릅니다.
+$$AE\_exit(\ell) \;=\; \bigl(AE\_entry(\ell) \setminus \mathit{kill}_{AE}([B]^\ell)\bigr) \;\cup\; \mathit{gen}_{AE}([B]^\ell)$$
 
-- `assign` 노드
-  - `GEN[n]`: 우변 산술식 내부 후보(`BinOp`)들
-  - `KILL[n]`: 좌변 변수 재정의로 인해 더 이상 보장되지 않는 후보 표현식들
-- `cond` 노드
-  - `GEN[n]`: 조건식 내부 후보(`BinOp`)들
-  - `KILL[n]`: 없음
-- `skip` 노드
-  - `GEN[n] = ∅`, `KILL[n] = ∅`
+The **maximum** fixed point (MFP) is computed by initialising $AE\_entry(\ell) = \mathbf{AExp}_\star$ for all $\ell \neq \mathit{init}(S_\star)$ and iterating until convergence.
 
-분석 결과는 각 노드의 `IN/OUT` 및 분석 유니버스 `E`, entry/exit 노드 id를 함께 반환합니다.
+---
 
-## 실행 방법
+## Analysis 2: Reaching Definitions Analysis (Forward, May)
 
-간단히는 다음처럼 실행할 수 있습니다.
+**File:** `reaching_definition_analysis/rda.py`
+
+A definition $(x, \ell)$ **reaches** a program point if there exists a path from the block $[x := a]^\ell$ to that point along which $x$ is not redefined. The token $(x, ?)$ denotes the possibility that $x$ was defined before the program started.
+
+### Universe
+
+$$\mathbf{RD}_\star \;=\; \bigl(\mathbf{Var}_\star \times (\mathbf{Lab}_\star \cup \{?\})\bigr)$$
+
+### gen and kill
+
+For each labeled block $[B]^\ell$:
+
+$$\mathit{gen}_{RD}([B]^\ell) = \begin{cases} \{(x, \ell)\} & \text{if } B \equiv x := a \\ \emptyset & \text{otherwise} \end{cases}$$
+
+$$\mathit{kill}_{RD}([B]^\ell) = \begin{cases} \{(x, \ell') \mid \ell' \in \mathbf{Lab}_\star \cup \{?\}\} & \text{if } B \equiv x := a \\ \emptyset & \text{otherwise} \end{cases}$$
+
+### Dataflow Equations
+
+$$RD\_entry(\ell) = \begin{cases} \{(x, ?) \mid x \in \mathbf{Var}_\star\} & \text{if } \ell = \mathit{init}(S_\star) \\ \displaystyle\bigcup_{\,(\ell',\,\ell)\,\in\,\mathit{flow}(S_\star)} RD\_exit(\ell') & \text{otherwise} \end{cases}$$
+
+$$RD\_exit(\ell) \;=\; \bigl(RD\_entry(\ell) \setminus \mathit{kill}_{RD}([B]^\ell)\bigr) \;\cup\; \mathit{gen}_{RD}([B]^\ell)$$
+
+> **Implementation note:** The implementation initialises $RD\_entry(\mathit{init}(S_\star)) = \emptyset$ (omitting the $(x,?)$ tokens) as a simplification.
+
+The **minimum** fixed point (MFP) is computed by initialising $RD\_entry(\ell) = \emptyset$ for all nodes and iterating until convergence.
+
+---
+
+## Analysis 3: Very Busy Expressions Analysis (Backward, Must)
+
+**File:** `very_busy_expressions_analysis/vbea.py`
+
+An expression $a$ is **very busy** at a program point if on every path from that point to the end of the program, $a$ is evaluated before any variable in $\mathit{FV}(a)$ is modified.
+
+### Universe
+
+$$\mathbf{AExp}_\star \;=\; \{ a \in \mathbf{AExp} \mid a \text{ is a non-trivial sub-expression (BinOp) occurring in } S_\star \}$$
+
+### gen and kill
+
+For each labeled block $[B]^\ell$:
+
+$$\mathit{gen}_{VB}([B]^\ell) = \begin{cases} \mathbf{AExp}(a) & \text{if } B \equiv x := a \\ \mathbf{AExp}(b) & \text{if } B \equiv b \text{ (cond)} \\ \emptyset & \text{if } B \equiv \mathbf{skip} \end{cases}$$
+
+$$\mathit{kill}_{VB}([B]^\ell) = \begin{cases} \{ a' \in \mathbf{AExp}_\star \mid x \in \mathit{FV}(a') \} & \text{if } B \equiv x := a \\ \emptyset & \text{otherwise} \end{cases}$$
+
+### Dataflow Equations
+
+$$VB\_exit(\ell) = \begin{cases} \emptyset & \text{if } \ell \in \mathit{final}(S_\star) \\ \displaystyle\bigcap_{\,(\ell,\,\ell')\,\in\,\mathit{flow}(S_\star)} VB\_entry(\ell') & \text{otherwise} \end{cases}$$
+
+$$VB\_entry(\ell) \;=\; \bigl(VB\_exit(\ell) \setminus \mathit{kill}_{VB}([B]^\ell)\bigr) \;\cup\; \mathit{gen}_{VB}([B]^\ell)$$
+
+The **maximum** fixed point (MFP) is computed by initialising $VB\_exit(\ell) = \mathbf{AExp}_\star$ for all $\ell \notin \mathit{final}(S_\star)$ and iterating until convergence.
+
+---
+
+## Usage
 
 ```bash
 python main.py --analysis aea
@@ -81,15 +126,13 @@ python main.py --analysis rda
 python main.py --analysis vbea
 ```
 
-현재 `main.py`에는 예제 프로그램(문자열)이 하드코딩되어 있으며, 파싱 후 `--analysis` 인자에 따라 분석기를 선택 실행합니다.
+`main.py` contains a hard-coded example program. The `--analysis` flag selects the analysis to run.
 
-## 다음에 추가할 것(로드맵)
+---
 
-원하는 순서대로 정적 분석들을 확장할 예정입니다. 예를 들면:
+## Roadmap
 
-- Live Variables(생존 변수)
-- Constant Propagation / Folding(상수 전파)
-- Common Subexpression Elimination(CSE)과의 연결(가능 시)
-- 분석별 공통 인프라(워크리스트, 데이터플로우 프레임워크) 정리
-
-관심 있는 분석이 있으면 말해주면, 그 분석을 먼저 구현해나가는 방식으로 진행하겠습니다.
+- Live Variables Analysis (backward, may)
+- Constant Propagation / Folding
+- Common Subexpression Elimination
+- Generic worklist-based dataflow framework
