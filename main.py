@@ -1,8 +1,8 @@
-def main():
-    from available_expressions_analysis import AvailableExpressionsAnalyzer
-    from available_expressions_analysis.aea import format_set
-    from syntax.parser import WhileParser
+from static_analysis.available_expressions_analysis import AvailableExpressionsAnalyzer
+from static_analysis.available_expressions_analysis import format_set
+from static_analysis.syntax.parser import WhileParser
 
+def main():
     program_src = """
     x := 1;
     y := 2;

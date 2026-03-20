@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-packages = find_packages(include=["available_expressions_analysis", "available_expressions_analysis.*"])
+packages = find_packages(include=["static_analysis", "static_analysis.*"])
 
 setup(
     name="static_analysis",

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Optional, Sequence, Set
 
-from syntax.ast import (
+from static_analysis.syntax.ast import (
     ArithExpr,
     Assign,
     BinOp,
@@ -21,7 +21,7 @@ from syntax.ast import (
     Var,
     While,
 )
-from syntax.tokenizer import Token, tokenize
+from static_analysis.syntax.tokenizer import Token, tokenize
 
 
 class WhileParser:
