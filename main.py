@@ -1,31 +1,31 @@
+import argparse
 from static_analysis.available_expressions_analysis import AvailableExpressionsAnalyzer
-from static_analysis.available_expressions_analysis import format_set
 from static_analysis.reaching_definition_analysis import ReachingDefinitionsAnalyzer
-from static_analysis.reaching_definition_analysis import format_set
 from static_analysis.syntax.parser import WhileParser
 
+PROGRAM_SRC = """
+x := 1;
+y := 2;
+while x < 5 do
+  x := x + 1;
+  y := y + x
+"""
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--analysis", type=str, required=True, choices=["aea", "rda"])
+    return parser.parse_args()
+
 def main():
-    program_src = """
-    x := 1;
-    y := 2;
-    while x < 5 do
-      x := x + 1;
-      y := y + x
-    """
+    args = parse_args()
+    ast = WhileParser(PROGRAM_SRC).parse()
 
-    ast = WhileParser(program_src).parse()
-    # analyzer = AvailableExpressionsAnalyzer(ast)
-    analyzer = ReachingDefinitionsAnalyzer(ast)
+    if args.analysis == "aea":
+        analyzer = AvailableExpressionsAnalyzer(ast)
+    elif args.analysis == "rda":
+        analyzer = ReachingDefinitionsAnalyzer(ast)
     result = analyzer.analyze()
-
-    print("Universe D =", format_set(result["D"]))
-    print("entry =", result["entry"], "exit =", result["exit"])
-
-    for nid in sorted(result["IN"].keys()):
-        inn = result["IN"][nid]
-        out = result["OUT"][nid]
-        node_kind = analyzer.cfg_builder.nodes[nid].kind
-        print(f"Node {nid} ({node_kind}): IN={format_set(inn)} OUT={format_set(out)}")
+    analyzer.print_result(result)
 
 if __name__ == "__main__":
     main()

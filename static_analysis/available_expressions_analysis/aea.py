@@ -153,6 +153,15 @@ class AvailableExpressionsAnalyzer:
 
         return {"E": set(self.E), "IN": IN, "OUT": OUT, "entry": self.entry, "exit": self.exit}
 
+    def print_result(self, result: Dict[str, object]) -> None:
+        print("Universe E =", format_set(result["E"]))
+        print("entry =", result["entry"], "exit =", result["exit"])
+        for nid in sorted(result["IN"].keys()):
+            inn = result["IN"][nid]
+            out = result["OUT"][nid]
+            node_kind = self.cfg_builder.nodes[nid].kind
+            print(f"Node {nid} ({node_kind}): IN={format_set(inn)} OUT={format_set(out)}")
+
 
 def format_set(s: Set[BinOp]) -> str:
     if not s:

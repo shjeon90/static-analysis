@@ -102,6 +102,15 @@ class ReachingDefinitionsAnalyzer:
 
         return {"D": set(self.D), "IN": IN, "OUT": OUT, "entry": self.entry, "exit": self.exit}
 
+    def print_result(self, result: Dict[str, object]) -> None:
+        print("Universe D =", format_set(result["D"]))
+        print("entry =", result["entry"], "exit =", result["exit"])
+        for nid in sorted(result["IN"].keys()):
+            inn = result["IN"][nid]
+            out = result["OUT"][nid]
+            node_kind = self.cfg_builder.nodes[nid].kind
+            print(f"Node {nid} ({node_kind}): IN={format_set(inn)} OUT={format_set(out)}")
+
 
 def format_set(s: Set[Definition]) -> str:
     if not s:
