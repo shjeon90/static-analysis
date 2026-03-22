@@ -7,6 +7,8 @@ This repository implements several **dataflow analysis** algorithms for the `WHI
 - Available Expressions Analysis (`aea`)
 - Reaching Definitions Analysis (`rda`)
 - Very Busy Expressions Analysis (`vbea`)
+- Live Variables Analysis (`lva`)
+- Use-Definition / Definition-Use Chain Analysis (`uddu`)
 
 ---
 
@@ -118,18 +120,6 @@ The **maximum** fixed point (MFP) is computed by initialising $VB_{\mathit{exit}
 
 ---
 
-## Usage
-
-```bash
-python main.py --analysis aea
-python main.py --analysis rda
-python main.py --analysis vbea
-```
-
-`main.py` contains a hard-coded example program. The `--analysis` flag selects the analysis to run.
-
----
-
 ## Analysis 4: Live Variables Analysis (Backward, May)
 
 **File:** `live_variables_analysis/lva.py`
@@ -157,6 +147,43 @@ $$LV_{\mathit{exit}}(\ell) = \begin{cases} \emptyset & \text{if } \ell \in \math
 $$LV_{\mathit{entry}}(\ell) \;=\; \mathit{gen}_{LV}([B]^\ell) \;\cup\; \bigl(LV_{\mathit{exit}}(\ell) \setminus \mathit{kill}_{LV}([B]^\ell)\bigr)$$
 
 The **minimum** fixed point (MFP) is computed by initialising $LV_{\mathit{exit}}(\ell) = \emptyset$ for all nodes and iterating until convergence.
+
+---
+## Usage
+
+```bash
+python main.py --analysis aea
+python main.py --analysis rda
+python main.py --analysis vbea
+python main.py --analysis lva
+python main.py --analysis uddu
+```
+
+`main.py` contains a hard-coded example program. The `--analysis` flag selects the analysis to run.
+
+---
+
+## Analysis 5: Use-Definition and Definition-Use Chains (Derived from RDA)
+
+**File:** `ud_du_chain_analysis/uddu.py`
+
+UD and DU chains are **derived analyses** built on top of Reaching Definitions Analysis. They do not have their own gen/kill functions or fixpoint equations; instead they are computed directly from $RD_{\mathit{entry}}$.
+
+### Auxiliary definition: uses
+
+$$\mathit{uses}([B]^\ell) = \begin{cases} \mathit{FV}(a) & \text{if } B \equiv x := a \\ \mathit{FV}(b) & \text{if } B \equiv b \text{ (cond)} \\ \emptyset & \text{if } B \equiv \mathbf{skip} \end{cases}$$
+
+### Use-Definition Chain
+
+For each block $[B]^\ell$ and each variable $x \in \mathit{uses}([B]^\ell)$, the UD chain gives the set of definition labels that can reach this use:
+
+$$\mathit{UD}(x, \ell) \;=\; \bigl\{\, \ell' \;\big|\; (x, \ell') \in RD_{\mathit{entry}}(\ell) \,\bigr\}$$
+
+### Definition-Use Chain
+
+For each assignment block $[x := a]^\ell$, the DU chain gives the set of use labels reachable from this definition:
+
+$$\mathit{DU}(x, \ell) \;=\; \bigl\{\, \ell'' \;\big|\; x \in \mathit{uses}([B'']^{\ell''}) \;\text{ and }\; (x, \ell) \in RD_{\mathit{entry}}(\ell'') \,\bigr\}$$
 
 ---
 

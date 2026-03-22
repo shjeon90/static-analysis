@@ -3,6 +3,7 @@ from static_analysis.available_expressions_analysis import AvailableExpressionsA
 from static_analysis.live_variables_analysis import LiveVariablesAnalyzer
 from static_analysis.reaching_definition_analysis import ReachingDefinitionsAnalyzer
 from static_analysis.very_busy_expressions_analysis import VeryBusyExpressionsAnalyzer
+from static_analysis.ud_du_chain_analysis import UDDUChainAnalyzer
 from static_analysis.syntax.parser import WhileParser
 
 PROGRAM_SRC = """
@@ -17,7 +18,7 @@ while x < 5 do
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--analysis", type=str, required=True, choices=["aea", "rda", "vbea", "lva"])
+    parser.add_argument("--analysis", type=str, required=True, choices=["aea", "rda", "vbea", "lva", "uddu"])
     return parser.parse_args()
 
 def main():
@@ -32,6 +33,8 @@ def main():
         analyzer = VeryBusyExpressionsAnalyzer(ast)
     elif args.analysis == "lva":
         analyzer = LiveVariablesAnalyzer(ast)
+    elif args.analysis == "uddu":
+        analyzer = UDDUChainAnalyzer(ast)
     else:
         raise ValueError(f"Unknown analysis: {args.analysis}")
 
