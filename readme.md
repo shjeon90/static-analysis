@@ -148,17 +148,6 @@ $$LV_{\mathit{entry}}(\ell) \;=\; \mathit{gen}_{LV}([B]^\ell) \;\cup\; \bigl(LV_
 
 The **minimum** fixed point (MFP) is computed by initialising $LV_{\mathit{exit}}(\ell) = \emptyset$ for all nodes and iterating until convergence.
 
----
-## Usage
-
-```bash
-python main.py --analysis aea
-python main.py --analysis rda
-python main.py --analysis vbea
-python main.py --analysis lva
-python main.py --analysis uddu
-```
-
 `main.py` contains a hard-coded example program. The `--analysis` flag selects the analysis to run.
 
 ---
@@ -186,6 +175,15 @@ For each assignment block $[x := a]^\ell$, the DU chain gives the set of use lab
 $$\mathit{DU}(x, \ell) \;=\; \bigl\{\, \ell'' \;\big|\; x \in \mathit{uses}([B'']^{\ell''}) \;\text{ and }\; (x, \ell) \in RD_{\mathit{entry}}(\ell'') \,\bigr\}$$
 
 ---
+## Usage
+
+```bash
+python main.py --analysis aea
+python main.py --analysis rda
+python main.py --analysis vbea
+python main.py --analysis lva
+python main.py --analysis uddu
+```
 
 ## Roadmap
 

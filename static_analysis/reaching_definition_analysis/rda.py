@@ -74,8 +74,12 @@ class ReachingDefinitionsAnalyzer(Analyzer[Definition]):
                 preds[v].add(u)
 
         # Initial state: may analysis starts with empty IN and expands at fixpoint.
-        IN: Dict[int, Set[Definition]] = {nid: set() for nid in nodes}
-        OUT: Dict[int, Set[Definition]] = {nid: set(self.GEN[nid]) for nid in nodes}
+        IN: Dict[int, Set[Definition]] = {}
+        OUT: Dict[int, Set[Definition]] = {}
+
+        for nid in nodes:
+            IN[nid] = set()
+            OUT[nid] = set(self.GEN[nid])
 
         changed = True
         while changed:
