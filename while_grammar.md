@@ -1,13 +1,13 @@
-## WHILE 문법 (간단 EBNF)
+## WHILE grammar (simple EBNF)
 
-아래 문법은 이 프로젝트에서 사용할 WHILE 구문입니다.
+The grammar below is the WHILE syntax used in this project.
 
-프로그램
+Program
 ```
 prog   ::= stmt EOF
 ```
 
-문장
+Statements
 ```
 stmt   ::= nonseq ( ";" nonseq )*
 nonseq ::= "skip"
@@ -16,14 +16,14 @@ nonseq ::= "skip"
          | "while" bexpr "do" stmt
 ```
 
-산술식
+Arithmetic expressions
 ```
 aexpr  ::= term ( ("+"|"-") term )*
 term   ::= factor ( ("*"|"/") factor )*
 factor ::= NUMBER | IDENT | "(" aexpr ")"
 ```
 
-부울식
+Boolean expressions
 ```
 bexpr  ::= orexpr
 orexpr ::= andexpr ( "or" andexpr )*
@@ -33,4 +33,3 @@ atom   ::= "true" | "false"
          | "(" bexpr ")"
          | aexpr ( "=" | "!=" | "<" | "<=" | ">" | ">=" ) aexpr
 ```
-

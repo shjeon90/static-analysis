@@ -52,11 +52,11 @@ where $\mathbf{AExp}(e)$ denotes the set of non-trivial arithmetic sub-expressio
 
 ### Dataflow Equations
 
-$$AE\_entry(\ell) = \begin{cases} \emptyset & \text{if } \ell = \mathit{init}(S_\star) \\ \displaystyle\bigcap_{\,(\ell',\,\ell)\,\in\,\mathit{flow}(S_\star)} AE\_exit(\ell') & \text{otherwise} \end{cases}$$
+$$AE_{\mathit{entry}}(\ell) = \begin{cases} \emptyset & \text{if } \ell = \mathit{init}(S_\star) \\ \displaystyle\bigcap_{\,(\ell',\,\ell)\,\in\,\mathit{flow}(S_\star)} AE_{\mathit{exit}}(\ell') & \text{otherwise} \end{cases}$$
 
-$$AE\_exit(\ell) \;=\; \bigl(AE\_entry(\ell) \setminus \mathit{kill}_{AE}([B]^\ell)\bigr) \;\cup\; \mathit{gen}_{AE}([B]^\ell)$$
+$$AE_{\mathit{exit}}(\ell) \;=\; \bigl(AE_{\mathit{entry}}(\ell) \setminus \mathit{kill}_{AE}([B]^\ell)\bigr) \;\cup\; \mathit{gen}_{AE}([B]^\ell)$$
 
-The **maximum** fixed point (MFP) is computed by initialising $AE\_entry(\ell) = \mathbf{AExp}_\star$ for all $\ell \neq \mathit{init}(S_\star)$ and iterating until convergence.
+The **maximum** fixed point (MFP) is computed by initialising $AE_{\mathit{entry}}(\ell) = \mathbf{AExp}_\star$ for all $\ell \neq \mathit{init}(S_\star)$ and iterating until convergence.
 
 ---
 
@@ -80,13 +80,13 @@ $$\mathit{kill}_{RD}([B]^\ell) = \begin{cases} \{(x, \ell') \mid \ell' \in \math
 
 ### Dataflow Equations
 
-$$RD\_entry(\ell) = \begin{cases} \{(x, ?) \mid x \in \mathbf{Var}_\star\} & \text{if } \ell = \mathit{init}(S_\star) \\ \displaystyle\bigcup_{\,(\ell',\,\ell)\,\in\,\mathit{flow}(S_\star)} RD\_exit(\ell') & \text{otherwise} \end{cases}$$
+$$RD_{\mathit{entry}}(\ell) = \begin{cases} \{(x, ?) \mid x \in \mathbf{Var}_\star\} & \text{if } \ell = \mathit{init}(S_\star) \\ \displaystyle\bigcup_{\,(\ell',\,\ell)\,\in\,\mathit{flow}(S_\star)} RD_{\mathit{exit}}(\ell') & \text{otherwise} \end{cases}$$
 
-$$RD\_exit(\ell) \;=\; \bigl(RD\_entry(\ell) \setminus \mathit{kill}_{RD}([B]^\ell)\bigr) \;\cup\; \mathit{gen}_{RD}([B]^\ell)$$
+$$RD_{\mathit{exit}}(\ell) \;=\; \bigl(RD_{\mathit{entry}}(\ell) \setminus \mathit{kill}_{RD}([B]^\ell)\bigr) \;\cup\; \mathit{gen}_{RD}([B]^\ell)$$
 
-> **Implementation note:** The implementation initialises $RD\_entry(\mathit{init}(S_\star)) = \emptyset$ (omitting the $(x,?)$ tokens) as a simplification.
+> **Implementation note:** The implementation initialises $RD_{\mathit{entry}}(\mathit{init}(S_\star)) = \emptyset$ (omitting the $(x,?)$ tokens) as a simplification.
 
-The **minimum** fixed point (MFP) is computed by initialising $RD\_entry(\ell) = \emptyset$ for all nodes and iterating until convergence.
+The **minimum** fixed point (MFP) is computed by initialising $RD_{\mathit{entry}}(\ell) = \emptyset$ for all nodes and iterating until convergence.
 
 ---
 
@@ -110,11 +110,11 @@ $$\mathit{kill}_{VB}([B]^\ell) = \begin{cases} \{ a' \in \mathbf{AExp}_\star \mi
 
 ### Dataflow Equations
 
-$$VB\_exit(\ell) = \begin{cases} \emptyset & \text{if } \ell \in \mathit{final}(S_\star) \\ \displaystyle\bigcap_{\,(\ell,\,\ell')\,\in\,\mathit{flow}(S_\star)} VB\_entry(\ell') & \text{otherwise} \end{cases}$$
+$$VB_{\mathit{exit}}(\ell) = \begin{cases} \emptyset & \text{if } \ell \in \mathit{final}(S_\star) \\ \displaystyle\bigcap_{\,(\ell,\,\ell')\,\in\,\mathit{flow}(S_\star)} VB_{\mathit{entry}}(\ell') & \text{otherwise} \end{cases}$$
 
-$$VB\_entry(\ell) \;=\; \bigl(VB\_exit(\ell) \setminus \mathit{kill}_{VB}([B]^\ell)\bigr) \;\cup\; \mathit{gen}_{VB}([B]^\ell)$$
+$$VB_{\mathit{entry}}(\ell) \;=\; \bigl(VB_{\mathit{exit}}(\ell) \setminus \mathit{kill}_{VB}([B]^\ell)\bigr) \;\cup\; \mathit{gen}_{VB}([B]^\ell)$$
 
-The **maximum** fixed point (MFP) is computed by initialising $VB\_exit(\ell) = \mathbf{AExp}_\star$ for all $\ell \notin \mathit{final}(S_\star)$ and iterating until convergence.
+The **maximum** fixed point (MFP) is computed by initialising $VB_{\mathit{exit}}(\ell) = \mathbf{AExp}_\star$ for all $\ell \notin \mathit{final}(S_\star)$ and iterating until convergence.
 
 ---
 
@@ -130,9 +130,38 @@ python main.py --analysis vbea
 
 ---
 
+## Analysis 4: Live Variables Analysis (Backward, May)
+
+**File:** `live_variables_analysis/lva.py`
+
+A variable $x$ is **live** at a program point if there exists a path from that point to a use of $x$ along which $x$ is not redefined.
+
+### Universe
+
+$$\mathbf{Var}_\star \;=\; \{ x \mid x \text{ is a variable occurring in } S_\star \}$$
+
+### gen and kill
+
+For each labeled block $[B]^\ell$:
+
+$$\mathit{gen}_{LV}([B]^\ell) = \begin{cases} \mathit{FV}(a) & \text{if } B \equiv x := a \\ \mathit{FV}(b) & \text{if } B \equiv b \text{ (cond)} \\ \emptyset & \text{if } B \equiv \mathbf{skip} \end{cases}$$
+
+$$\mathit{kill}_{LV}([B]^\ell) = \begin{cases} \{x\} & \text{if } B \equiv x := a \\ \emptyset & \text{otherwise} \end{cases}$$
+
+where $\mathit{FV}(e)$ denotes the set of all variables (free variables) occurring in $e$.
+
+### Dataflow Equations
+
+$$LV_{\mathit{exit}}(\ell) = \begin{cases} \emptyset & \text{if } \ell \in \mathit{final}(S_\star) \\ \displaystyle\bigcup_{\,(\ell,\,\ell')\,\in\,\mathit{flow}(S_\star)} LV_{\mathit{entry}}(\ell') & \text{otherwise} \end{cases}$$
+
+$$LV_{\mathit{entry}}(\ell) \;=\; \mathit{gen}_{LV}([B]^\ell) \;\cup\; \bigl(LV_{\mathit{exit}}(\ell) \setminus \mathit{kill}_{LV}([B]^\ell)\bigr)$$
+
+The **minimum** fixed point (MFP) is computed by initialising $LV_{\mathit{exit}}(\ell) = \emptyset$ for all nodes and iterating until convergence.
+
+---
+
 ## Roadmap
 
-- Live Variables Analysis (backward, may)
 - Constant Propagation / Folding
 - Common Subexpression Elimination
 - Generic worklist-based dataflow framework

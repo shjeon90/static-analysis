@@ -19,9 +19,9 @@ class AvailableExpressionsAnalyzer(Analyzer[BinOp]):
     """
     Available Expressions Analysis (forward, must)
 
-    - E: 프로그램 내 등장하는 후보 '산술 표현식'(BinOp 노드들)
-    - IN[n]  : n에 도달하기 직전에 모든 경로에서 available인 표현식 집합
-    - OUT[n] : n의 전이(gen/kill)를 반영한 결과
+    - E: candidate arithmetic expressions (BinOp nodes) appearing in the program
+    - IN[n]: expressions available on all paths immediately before n
+    - OUT[n]: result after n's transfer function (gen/kill)
     """
 
     def __init__(self, program: Stmt) -> None:
@@ -65,7 +65,7 @@ class AvailableExpressionsAnalyzer(Analyzer[BinOp]):
             self._collect_universe_stmt(stmt.body)
             return
 
-        raise TypeError(f"지원하지 않는 Stmt 타입: {type(stmt)}")
+        raise TypeError(f"Unsupported Stmt type: {type(stmt)}")
 
     def _collect_universe(self) -> None:
         self.expr_varset = {}
@@ -101,18 +101,18 @@ class AvailableExpressionsAnalyzer(Analyzer[BinOp]):
                 self.KILL[nid] = set()
                 continue
 
-            raise ValueError(f"알 수 없는 node kind: {node.kind}")
+            raise ValueError(f"Unknown node kind: {node.kind}")
 
     def analyze(self) -> Dict[str, object]:
         nodes = sorted(self.cfg_builder.nodes.keys())
 
-        # preds 계산 (forward analysis이기 때문에 preds 기반으로 계산)
+        # Compute preds (forward analysis is phrased in terms of preds)
         preds: Dict[int, Set[int]] = {nid: set() for nid in nodes}
         for u, vs in self.cfg_builder.succ.items():
             for v in vs:
                 preds[v].add(u)
 
-        # 초기값
+        # Initial values
         IN: Dict[int, Set[BinOp]] = {}
         OUT: Dict[int, Set[BinOp]] = {}
 

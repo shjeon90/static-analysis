@@ -9,7 +9,7 @@ class ArithExpr:
         raise NotImplementedError
 
     def candidates(self) -> Iterable["BinOp"]:
-        """표현식 내부의 '후보 가능 표현식'들(BinOp 노드들)을 순회."""
+        """Iterate candidate subexpressions (BinOp nodes) within this expression."""
         raise NotImplementedError
 
     def to_key(self) -> str:
@@ -54,7 +54,7 @@ class BinOp(ArithExpr):
         return frozenset(set(self.left.vars()) | set(self.right.vars()))
 
     def candidates(self) -> Iterable["BinOp"]:
-        # 이 노드(BinOp) 자체와, 자식 BinOp들도 포함
+        # Includes this BinOp node and nested BinOp children
         yield self
         yield from self.left.candidates()
         yield from self.right.candidates()

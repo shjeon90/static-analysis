@@ -1,2 +1,2 @@
-"""WHILE 언어 구문/AST/파서 패키지."""
+"""WHILE language syntax, AST, and parser package."""
 

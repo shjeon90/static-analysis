@@ -10,7 +10,7 @@ class Token:
     value: str
     pos: int
 
-    def __repr__(self) -> str:  # 디버깅용
+    def __repr__(self) -> str:  # for debugging
         return f"Token({self.kind!r}, {self.value!r}, pos={self.pos})"
 
 
@@ -123,7 +123,7 @@ def tokenize(src: str) -> List[Token]:
             i = j
             continue
 
-        raise SyntaxError(f"알 수 없는 문자 {c!r} (pos={i})")
+        raise SyntaxError(f"unknown character {c!r} (pos={i})")
 
     tokens.append(Token(kind="EOF", value="", pos=n))
     return tokens

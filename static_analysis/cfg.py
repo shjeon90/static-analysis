@@ -81,5 +81,5 @@ class CFGBuilder:
             self._add_edge(body_exit, cond_node)  # back edge
             return cond_node, after
 
-        raise TypeError(f"지원하지 않는 Stmt 타입: {type(stmt)}")
+        raise TypeError(f"Unsupported Stmt type: {type(stmt)}")
 

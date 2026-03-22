@@ -20,10 +20,10 @@ class ReachingDefinitionsAnalyzer(Analyzer[Definition]):
     """
     Reaching Definitions Analysis (forward, may)
 
-    - D: 프로그램 내 등장하는 '정의(definition)'의 유니버스
-      * 정의는 (변수명, 특정 CFG assign node id)로 고유화합니다.
-    - IN[n]: n에 도달하기 직전에, 어떤 경로들에서든 도달 가능한 정의 집합
-    - OUT[n]: node n을 실행한 이후 도달 가능한 정의 집합
+    - D: universe of definitions appearing in the program
+      * Definitions are uniquely identified by (variable name, CFG assign node id).
+    - IN[n]: set of definitions reachable on some path immediately before n
+    - OUT[n]: set of definitions reachable after executing node n
     """
 
     def __init__(self, program: Stmt) -> None:
@@ -61,19 +61,19 @@ class ReachingDefinitionsAnalyzer(Analyzer[Definition]):
             definition = Definition(var=var, node_id=nid)
 
             self.GEN[nid].add(definition)
-            # 같은 변수를 정의하는 기존 정의들은 죽입니다.
+            # Prior definitions of the same variable are killed.
             self.KILL[nid] = set(self.var_to_defs.get(var, set())) - {definition}
 
     def analyze(self) -> Dict[str, object]:
         nodes = sorted(self.cfg_builder.nodes.keys())
 
-        # preds 계산 (forward analysis)
+        # Compute preds (forward analysis)
         preds: Dict[int, Set[int]] = {nid: set() for nid in nodes}
         for u, vs in self.cfg_builder.succ.items():
             for v in vs:
                 preds[v].add(u)
 
-        # 초기값: may 분석은 IN을 empty로 두고 fixpoint로 확장합니다.
+        # Initial state: may analysis starts with empty IN and expands at fixpoint.
         IN: Dict[int, Set[Definition]] = {nid: set() for nid in nodes}
         OUT: Dict[int, Set[Definition]] = {nid: set(self.GEN[nid]) for nid in nodes}
 

@@ -36,7 +36,7 @@ class WhileParser:
         tok = self._peek()
         if tok.kind != kind:
             raise SyntaxError(
-                f"기대: {kind}, 실제: {tok.kind} (pos={tok.pos})"
+                f"expected {kind}, got {tok.kind} (pos={tok.pos})"
             )
         self.i += 1
         return tok
@@ -54,9 +54,9 @@ class WhileParser:
         return stmt
 
     def _parse_stmt(self, stop_kinds: Set[str]) -> Stmt:
-        # ';' 시퀀스는 가장 낮은 우선순위로 취급
+        # Treat ';' sequences as lowest precedence
         if self._peek().kind in stop_kinds:
-            raise SyntaxError(f"stmt 시작 토큰이 아님: {self._peek()}")
+            raise SyntaxError(f"not a statement-start token: {self._peek()}")
 
         first = self._parse_non_seq_stmt(stop_kinds=stop_kinds)
         stmts = [first]
@@ -66,7 +66,7 @@ class WhileParser:
                 break
             stmts.append(self._parse_non_seq_stmt(stop_kinds=stop_kinds))
 
-        # 좌결합 Seq
+        # Left-associative Seq
         out: Stmt = stmts[0]
         for s in stmts[1:]:
             out = Seq(out, s)
@@ -91,7 +91,7 @@ class WhileParser:
             expr = self._parse_arith_expr()
             return Assign(name=name, expr=expr)
 
-        raise SyntaxError(f"지원하지 않는 stmt 시작 토큰: {tok.kind} (pos={tok.pos})")
+        raise SyntaxError(f"unsupported stmt start token: {tok.kind} (pos={tok.pos})")
 
     def _parse_if(self, stop_kinds: Set[str]) -> Stmt:
         self._consume("IF")
@@ -146,16 +146,16 @@ class WhileParser:
             self._consume("FALSE")
             return BoolConst(value=False)
 
-        # 비교: a <op> a
+        # Comparison: a <op> a
         left = self._parse_arith_expr()
 
         op_tok = self._peek()
         if op_tok.kind in {"EQ", "NE", "LT", "LE", "GT", "GE"}:
             self.i += 1
         else:
-            raise SyntaxError(f"비교 연산자가 필요합니다. (pos={op_tok.pos})")
+            raise SyntaxError(f"comparison operator expected (pos={op_tok.pos})")
 
-        # bool 비교 연산자 문자열 표준화
+        # Normalize comparison operator token to string
         op_map = {
             "EQ": "=",
             "NE": "!=",
@@ -209,5 +209,5 @@ class WhileParser:
             e = self._parse_arith_expr()
             self._consume("RPAREN")
             return e
-        raise SyntaxError(f"arithmetic factor 기대: {tok.kind} (pos={tok.pos})")
+        raise SyntaxError(f"arithmetic factor expected: {tok.kind} (pos={tok.pos})")
 

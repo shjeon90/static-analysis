@@ -1,2 +1,2 @@
-"""정적 분석(WHILE 언어) 패키지 루트."""
+"""Root package for static analysis of the WHILE language."""
 

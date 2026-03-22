@@ -20,9 +20,9 @@ class VeryBusyExpressionsAnalyzer(Analyzer[BinOp]):
     """
     Very Busy Expressions Analysis (backward, must)
 
-    - E: 프로그램 내 등장하는 후보 산술 표현식(BinOp) 집합
-    - OUT[n]: n 직후 시점에서, 모든 경로에서 곧 재계산되기 전에 필요한 표현식 집합
-    - IN[n]: n 직전 시점의 very busy 표현식 집합
+    - E: set of candidate arithmetic expressions (BinOp nodes) appearing in the program
+    - OUT[n]: at the point right after n, expressions needed on all paths before they are recomputed
+    - IN[n]: set of very busy expressions at the point right before n
     """
 
     def __init__(self, program: Stmt) -> None:
@@ -66,7 +66,7 @@ class VeryBusyExpressionsAnalyzer(Analyzer[BinOp]):
             self._collect_universe_stmt(stmt.body)
             return
 
-        raise TypeError(f"지원하지 않는 Stmt 타입: {type(stmt)}")
+        raise TypeError(f"Unsupported Stmt type: {type(stmt)}")
 
     def _collect_universe(self) -> None:
         self.expr_varset = {}
@@ -102,7 +102,7 @@ class VeryBusyExpressionsAnalyzer(Analyzer[BinOp]):
                 self.KILL[nid] = set()
                 continue
 
-            raise ValueError(f"알 수 없는 node kind: {node.kind}")
+            raise ValueError(f"Unknown node kind: {node.kind}")
 
     def analyze(self) -> Dict[str, object]:
         nodes = sorted(self.cfg_builder.nodes.keys())
